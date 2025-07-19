@@ -185,7 +185,6 @@ local function createTrainTrack(cfrm: CFrame,dist: number,properties: any,Genera
 	end
 
 
-
 	if GenerationRules["Track Handles"] then
 		local handleSize = Vector3.new(ballast.Size.X,ballast.Size.Y+railSize.Y,1/D)
 
@@ -208,12 +207,6 @@ local function createTrainTrack(cfrm: CFrame,dist: number,properties: any,Genera
 
 	return Track
 end
-
-
-
-
-
-
 
 --operation types
 local WayOperations = {
@@ -311,11 +304,9 @@ local WayOperations = {
 
 		end
 		
-		
 
 		local parts = {}
 		local partsPositions = {} --the smoothConnect module needs positions for angles between parts
-
 
 		for i,pos in positions do
 			if not positions[i-1] then
