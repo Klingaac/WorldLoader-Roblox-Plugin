@@ -5,9 +5,8 @@
 		     |,4-  ) )-,_. ,\ (  `'-'
 			'---''(_/--'  `-'\_)  	
 			
-		* 1 meter = 3.57 studs
-		* input data IN METERS
-		* name of module does not matter
+		1 meter = 3.57 studs
+		input data IN METERS
 		
 		find all info on how to edit this here: https://devforum.roblox.com/t/worldloader-plugin-documentation/3187419
 
