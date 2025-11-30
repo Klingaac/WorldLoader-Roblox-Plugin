@@ -16,6 +16,40 @@ local function rN(num: number, numDecimalPlaces: number)
 end
 
 
+local SENTRY_DNS = "https://eb659e634e4f9d39207eab0dace42488@o4510438574653440.ingest.de.sentry.io/4510438593790032"
+local SENTRY_KEY = "eb659e634e4f9d39207eab0dace42488"
+local SENTRY_HOST = "o4510438574653440.ingest.de.sentry.io"
+local SENTRY_PROJECT = "4510438593790032"
+
+-- Sentry is used to log errors on an online dashboard
+local function sendToSentry(message: string, extra: any)
+	
+	warn("An error occured while using WorldLoader, it has been sent to the developers to investigate.")
+	
+	local payload = {
+		message = message,
+		extra = extra
+	}
+	
+	local json = HS:JSONEncode(payload)
+	
+	local url = ("https://%s/api/%s/store/?sentry_key=%s"):format(
+		SENTRY_HOST,
+		SENTRY_PROJECT,
+		SENTRY_KEY
+	)
+	
+	local success, response = pcall(function()
+		HS:PostAsync(url, json, Enum.HttpContentType.ApplicationJson)
+	end)
+	
+	if not success then
+		print(response)
+	end
+	
+end
+
+
 local function getV3(result: any, offsetVector: Vector2, worldScale: number)
 	
 	local height = result["elevation"]
@@ -50,8 +84,11 @@ local function getOSM(coords: string)
 	local success, response = pcall(function()
 		return HS:GetAsync(url)
 	end)
-
+	
+	-- Send the unsuccessful response to a sentry dashboard I can monitor
 	if not success then
+		sendToSentry("get osm failed", response)
+		
 		return
 	end
 
@@ -105,21 +142,35 @@ local function getElevation(corners1: {Vector2} ,corners2: {Vector2}, offsetVect
 	
 	local success, response
 	
-	while true do
+	do
 		
-		success, response = pcall(function()
-			return HS:GetAsync(centerUrl)
-		end)
+		local attempts = 0
 		
-		if success then
-			break
-		else
-			warn(response)
+		while true do
+
+			success, response = pcall(function()
+				return HS:GetAsync(centerUrl)
+			end)
+			
+			attempts += 1
+
+			if success then
+				break
+			else
+				warn(response)
+			end
+			
+			if attempts > 10 then
+				sendToSentry("get terrain midpoint failed, too many attempts", response)
+			end
+
+			task.wait(waitInterval)
+
 		end
 		
-		task.wait(waitInterval)
-		
 	end
+	
+	
 	
 	local centerResponseT = HS:JSONDecode(response)
 	local centerV3 = getV3(centerResponseT["results"][1], offsetVector, worldScale)
@@ -267,6 +318,10 @@ local function getElevation(corners1: {Vector2} ,corners2: {Vector2}, offsetVect
 					
 					if failures > 30 then
 						WidgetModule.error("Elevation data failed, try again later")
+						
+						-- Send the unsuccessful response to a sentry dashboard I can monitor
+						sendToSentry("get terrain failed, too many failures", response)
+						
 						return
 					end
 				end
@@ -350,6 +405,8 @@ end
 
 local function getData(corners1: {Vector2}, corners2: {Vector2}, offsetVector: Vector2, elevationMode: string, centerLat: number, centerLon: number, worldScale: number)
 	
+	--sendToSentry("sentry test", {sup="ayo"})
+	
 	-- Initializing the loading widget
 	local loadingWidget = WidgetModule.loading("Downloading street data...")
 	local datas = {}
@@ -371,7 +428,7 @@ local function getData(corners1: {Vector2}, corners2: {Vector2}, offsetVector: V
 
 		if not elements then
 			loadingWidget:Kill()	
-			WidgetModule.error("Failed to get Street data")
+			WidgetModule.error("Failed to get Street data, check your internet and try again.")
 			return
 		end
 		
@@ -393,7 +450,7 @@ local function getData(corners1: {Vector2}, corners2: {Vector2}, offsetVector: V
 
 		if not elevations then
 			loadingWidget:Kill()
-			WidgetModule.error("Failed to get Elevation data")
+			WidgetModule.error("Failed to get Elevation data, check your internet and try again.")
 			return
 		end
 
