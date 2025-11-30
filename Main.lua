@@ -1,6 +1,6 @@
 -- OpenStreetMaps Loader, used for accurate 1:1 real world generation, but also Ro-scale
 -- Started 5/oct/24
--- Last updated 14/jun/25
+-- Last updated 27/nov/25
 -- By Klingaac (@klingac on discord)
 
 
@@ -23,7 +23,7 @@
 
 ------------------------------------------------------------------------------------------------
 
-local ver = "1.3.1"
+local ver = "1.3.3"
 
 -- Plugin Setup
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
