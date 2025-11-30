@@ -253,7 +253,7 @@ function module.start(canvas: CanvasGroup)
 
 			if theme == "Dark" then
 				button.TextColor = BrickColor.new("Institutional white")
-				button.BackgroundColor3 = Color3.fromRGB(53, 53, 53)
+				button.BackgroundColor3 = Color3.fromRGB(48, 50, 58)
 			else
 				button.TextColor = BrickColor.new("Really black")
 				button.BackgroundColor3 = Color3.fromRGB(239, 239, 239)

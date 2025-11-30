@@ -121,7 +121,7 @@ local function saveToHistory(address: string, latLon: string, scale: number, ele
 		end
 
 	end
-	
+
 	plugin:SetSetting("GenerationHistory",History)
 
 end
@@ -191,79 +191,98 @@ function module.start(canvas: CanvasGroup)
 
 		Coordinates.newScaler(scale,lat)
 		offsetVector = Coordinates.toRoblox(lat,lon)
-		
+
 		datas = {}
 		baseSizes = {}
 		basePositions = {}
-		
+
 		local selected = SE:Get()
-		
+
 		local function warnUser(text: string)
 			local widget, event: RBXScriptSignal = WidgetModule.warnToContinue(text)
 			local wishToContinue = event:Wait()
 
-			if not wishToContinue then
-				return
+			if wishToContinue then
+				return true
 			end
 		end
-		
-		
+
+
 		if #selected == 0 then
 			WidgetModule.error("No parts selected!")
 			return
 		end
-		
-		
+
+
 		local maxSelected = 10
-		
+
 		if #selected > maxSelected then
-			warnUser("Too many parts selected, generating on many parts can lead to Studio crashing. It is recommended to generate on max. 10 parts at once. Do you wish to continue?")
+			local msg = "Too many parts selected, generating on many parts can lead to Studio crashing."..
+				"It is recommended to generate on max. 10 parts at once. Do you wish to continue?"
+			local cont = warnUser(msg)
+			
+			if not cont then 
+				return
+			end
 		end
-		
-		
+
+
 		for _,part in selected do
 			if not part:IsA("BasePart") then
 				WidgetModule.error("'".. part.Name .."' is not a part, only Parts must be selected!")
 				return
 			end
 		end
-		
-		
-		local sizeTooSmall = 20
-		
+
+
+		local sizeTooSmall = 100
+
 		for _,part in selected do
+			
+			local cont = true
+			
 			if part.Size.X < sizeTooSmall or part.Size.Z < sizeTooSmall then
-				warnUser("Selected part '".. part.Name .."' may be too small. Do you wish to continue?")
+				cont = warnUser("Selected part '".. part.Name .."' may be too small. Do you wish to continue?")
 			end
+			
+			if not cont then
+				return
+			end
+			
+			cont = true
 			
 			if part.Orientation ~= Vector3.new(0,0,0) then
-				warnUser("Selected part '".. part.Name .."' must have orientation 0,0,0. Its orientation will be corrected, but generation may happen outside of the part's boundaries. Do you wish to continue?")
+				cont = warnUser("Selected part '".. part.Name .."' must have orientation 0,0,0. Its orientation will be corrected, but generation may happen outside of the part's boundaries. Do you wish to continue?")
+			end
+
+			if not cont then
+				return
 			end
 		end
-		
+
 		local corners1 = {}
 		local corners2 = {}
-		
+
 		for _,base in selected do
-			
+
 			if base.Orientation ~= Vector3.new(0,0,0) then
 				base.CFrame = CFrame.new(base.Position)
 			end
-			
+
 			local baseSize = base.Size
 			local basePos = base.Position
-			
+
 			table.insert(baseSizes, baseSize)
 			table.insert(basePositions, basePos)
 
 			local corner1 = Coordinates.toLatLon(offsetVector.X+base.Position.X+base.Size.X/2,offsetVector.Y+base.Position.Z+base.Size.Z/2)
 			local corner2 = Coordinates.toLatLon(offsetVector.X+base.Position.X-base.Size.X/2,offsetVector.Y+base.Position.Z-base.Size.Z/2)
-			
+
 			table.insert(corners1, corner1)
 			table.insert(corners2, corner2)
-			
+
 		end
-		
+
 		local timeToLoad = 0
 		local res = 0.003
 		for i = 1, #corners1 do
@@ -271,8 +290,8 @@ function module.start(canvas: CanvasGroup)
 			local c2 = corners2[i]
 			timeToLoad += (math.abs(c1.X - c2.X) / res) * (math.abs(c1.Y - c2.Y) / res) / 100 * 1.1
 		end
-		
-		
+
+
 		-- Gets needed elevation and street data
 		datas = GetData(corners1 ,corners2, offsetVector, elevationMode, lat, lon, scale)
 
@@ -281,10 +300,10 @@ function module.start(canvas: CanvasGroup)
 			datas = {}
 			return
 		end	
-		
-		
+
+
 		local adress
-		
+
 		-- Find adress
 		for _,data in datas do
 			adress = Address(data)
@@ -294,8 +313,8 @@ function module.start(canvas: CanvasGroup)
 				break
 			end
 		end
-		
-		
+
+
 		saveToHistory(adress,lat..", "..lon,scale,elevationMode)
 		Objects.Values.Scale.Value = scale
 		dataLabel.Text = adress
@@ -309,26 +328,26 @@ function module.start(canvas: CanvasGroup)
 			WidgetModule.error("Download data first!")
 			return
 		end
-		
+
 		-- Nice lil loading widget
 		local loadingWidget = WidgetModule.loading("Generating...")
 
 		-- Generating
 		local startedGenerating = os.clock()
-		
+
 		for i,data in datas do
-			
+
 			local baseSize = baseSizes[i]
 			local basePos = basePositions[i]
-			
+
 			if elevationMode ~= "flat" and data["elevation"] == nil then
 				WidgetModule.error("You switched your Elevation mode without downloading new data. Download data again!")
 				return
 			end
-			
+
 			local WayPropertiesModule = script.Parent.Parent.Parent.EditableModules:GetChildren()
 			local IsWayPropertiesFunctioning = pcall(function() require(WayPropertiesModule[1]) end)
-			
+
 			if not IsWayPropertiesFunctioning then
 				WidgetModule.error("Your custom module inside EditableModules hasn't been found or loaded correctly!")
 			end
@@ -344,16 +363,16 @@ function module.start(canvas: CanvasGroup)
 				errorWidget.interface.widget.TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 				error(response)
 			end
-			
+
 		end
-		
+
 		loadingWidget:FinishLoading("Generating successful! (".. rN(os.clock()-startedGenerating,3) ..")")
 
 	end)
 
 
 	HistoryButton.MouseButton1Click:Connect(function()
-		
+
 		local elevationModePairs = {
 			["flat"] = "Flat",
 			["elevation"] = "Elevation Only",
@@ -371,13 +390,13 @@ function module.start(canvas: CanvasGroup)
 		if theme == "Light" then
 			itembox.BackgroundColor3 = Color3.fromRGB(243, 243, 243)
 		end
-		
+
 		local height = 60
-		
-		
+
+
 		for i = #History,1,-1 do
 			local T = History[i]
-			
+
 			local b = Instance.new("TextButton")
 			b.Size = UDim2.new(1,0,0,height)
 			b.BackgroundTransparency = 1
@@ -386,11 +405,11 @@ function module.start(canvas: CanvasGroup)
 			b.ZIndex = 40
 			b.Parent = itembox
 			b.RichText = true
-			
+
 			if theme == "Light" then
 				b.TextColor = BrickColor.new(0,0,0)
 			end
-			
+
 			--as the elevation feature is new, not all profiles are gona have it
 			local savedElevationMode = T[5]
 			if not T[5] then
@@ -434,8 +453,8 @@ function module.start(canvas: CanvasGroup)
 			itembox:Destroy()
 		end)
 	end)
-	
-	
+
+
 	ElevationButton.MouseButton1Click:Connect(function()
 
 		local blurFrame = getBlurFrame(canvas)
@@ -446,28 +465,28 @@ function module.start(canvas: CanvasGroup)
 		end
 
 		local height = 60
-		
+
 		local modes = {
 			"flat",
 			"elevation",
 			"terrain",
 		}
-		
+
 		local fullNames = {
 			"Flat",
 			"Elevation Only",
 			"Terrain",
 		}
-		
+
 		local Descriptions = {
 			"<b>Flat</b> - original mode, no terrain, no elevation, can generate areas",
 			"<b>Elevation only</b> - no terrain and areas, everything else spawns with correct elevation",
 			"<b>Terrain</b> - uses Roblox terrain, roads also become terrain, only generates Buildings and rails",
 		}
-		
+
 		for i = 1, 3 do
 			local description = Descriptions[i]
-			
+
 			local b = Instance.new("TextButton")
 			b.Size = UDim2.new(1,0,0,height)
 			b.BackgroundTransparency = 1
@@ -477,9 +496,9 @@ function module.start(canvas: CanvasGroup)
 			b.Parent = itembox
 			b.TextWrapped = true
 			b.RichText = true
-			
+
 			b.Text = description
-			
+
 			if theme == "Light" then
 				b.TextColor = BrickColor.new(0,0,0)
 			end
@@ -490,15 +509,15 @@ function module.start(canvas: CanvasGroup)
 			b.MouseLeave:Connect(function()
 				b.BackgroundTransparency = 1
 			end)
-			
+
 			b.MouseButton1Up:Connect(function()
 				elevationMode = modes[i]
 				ElevationButton.Text = "Elevation: "..fullNames[i]
-				
+
 				blurFrame:Destroy()
 				itembox:Destroy()
 			end)
-			
+
 		end
 
 		local s = math.min(3*height,canvas.AbsoluteSize.Y-130)
@@ -515,7 +534,7 @@ function module.start(canvas: CanvasGroup)
 			itembox:Destroy()
 		end)
 	end)
-	
+
 end
 
 return module
